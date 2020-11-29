@@ -100,7 +100,7 @@ class SequentialModel:
             model['input_shape'].append(layer.input_size)
             model['output_shape'].append(layer.output_size)
         model_df = pd.DataFrame(model)
-        print(model_df)
+        print(model_df.to_string(index=False))
     def plot_loss(self):
         plt.plot(range(len(self.history['loss'])), self.history['loss'])
         plt.plot(range(len(self.history['val_loss'])), self.history['val_loss'])
@@ -186,7 +186,7 @@ class Softmax:
         # TODO
         # a_col = a.reshape(-1, 1)
         # jacobian = np.diagflat(a_col) - np.dot(a_col, a_col.T)
-        return a
+        return np.ones(a.shape)
 
 
 class Input:
@@ -199,7 +199,9 @@ class Input:
 
 class Flatten:
     def compile(self, input_size):
-        self.input_size = self.output_size = input_size
+        self.input_size = input_size
+        self.output_size = np.prod(input_size)
+        self.name = 'Flatten'
     def __call__(self, x):
         return x.reshape(-1, x.shape[0])
 
@@ -215,9 +217,8 @@ class Dense:
         self.b = None
     def compile(self, input_size):
         self.input_size = input_size
-        inputs = np.prod(input_size)
-        self.w = np.random.randn(self.n, inputs) * np.sqrt(2 / (inputs))
-        self.b = np.random.randn(self.n, 1) * np.sqrt(2 / (inputs))
+        self.w = np.random.randn(self.n, input_size) * np.sqrt(2 / (input_size))
+        self.b = np.random.randn(self.n, 1) * np.sqrt(2 / (input_size))
     def __call__(self, x):
         z = np.dot(self.w, x) + self.b
         a = self.activation.output(z)
@@ -225,8 +226,9 @@ class Dense:
 
 
 class Dropout:
-    def __init__(self, p):
+    def __init__(self, p, name=None):
         self.p = p
+        self.name = name if name is not None else 'Dropout ' + str(p)
     def compile(self, input_size):
         self.input_size = self.output_size = input_size
     def __call__(self, x):
@@ -235,34 +237,64 @@ class Dropout:
 
 
 class Conv2D:
-    def __init__(self, n, ksize, stride=1, padding='same', activation=None):
+    def __init__(self, n, ksize, stride=1, padding='same', activation=None, name=None):
         self.n = n
-        self.ksize = ksize
+        try:
+            self.ksize = tuple(ksize)
+        except TypeError:
+            self.ksize = (ksize, ksize)
+        assert(ksize[0] % 2 and ksize[1] % 2)
         self.stride = stride
         self.padding = padding
         self.activation = activation
+        self.name = name if name is not None else 'Conv2D ' + str(n) + 'x' + str(self.ksize)
     def compile(self, input_size):
         self.input_size = input_size
-        self.output_size = input_size if self.padding == 'same' else tuple(np.array(input_size) - 2*np.floor(ksize / 2))
+        assert(len(input_size) == 2)
+        if self.padding == 'same':
+            self.padsize = np.floor(np.array(ksize) / 2)
+        self.output_size = input_size if self.padding == 'same' else tuple(np.array(input_size) - 2*self.padsize)
     def __call__(self, x):
-        # TODO
-        pass
-
+        if self.padding == 'same':
+            padded = np.zeros(np.array(input_size) + 2*self.padsize)
+            padded[..., self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1], ...] = x
+            x = padded
+        y = np.zeros(x.shape, dtype=np.float32)
 
 class MaxPool2D:
-    def __init__(self, ksize, stride=2):
-        self.ksize = ksize
-        self.stride = stride
+    def __init__(self, ksize, name=None):
+        try:
+            self.ksize = tuple(ksize)
+        except TypeError:
+            self.ksize = (ksize, ksize)
+        self.name = name if name is not None else 'Maxpool ' + str(self.ksize)
     def compile(self, input_size):
         self.input_size = input_size
-        self.output_size = tuple(np.ceil(np.array(input_size) / self.stride))
+        assert(len(input_size) == 2)
+        self.output_size = tuple(np.ceil(np.array(input_size) / self.ksize))
+        self.padding = input_size[0] % 2 or input_size[1] % 2
     def __call__(self, x):
-        # TODO
-        pass
+        if self.padding:
+            padded = np.full(x.shape[:1] + self.output_size + x.shape[3:], np.nan)
+            padded[..., :x.shape[1], :x.shape[2], ...] = x
+            x = padded
+        shape = (x.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + x.shape[3:]
+        return np.nanmax(x.reshape(shape), axis=(2, 4))
 
 
 class Add:
     def compile(self, input_size):
         self.input_size = self.output_size = input_size
+        self.name = 'Add'
     def __call__(self, x):
         return sum(x)
+
+
+class Concatenate:
+    def __init__(self, axis=-1, name=None):
+        self.axis = axis
+        self.name = name if name is not None else 'Concat axis - ' + str(axis)
+    def compile(self, input_size):
+        self.input_size = self.output_size = input_size
+    def __call__(self, x):
+        return np.concatenate(x, axis=self.axis)
