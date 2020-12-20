@@ -37,7 +37,7 @@ class SequentialModel:
             for i, (x, y) in enumerate(zip(batch_train_x, batch_train_y)):
                 outputs = self.forward(x)
                 train_loss.append(self.loss(outputs[-1], y.T))
-                gradients = self.backward(x, y.T, outputs)
+                gradients = self.backward(x, y, outputs)
                 self.optimizer(self.layers, gradients)
             self.history['loss'].append(sum(train_loss))
             if val_x is not None and val_y is not None:
@@ -58,7 +58,7 @@ class SequentialModel:
         for i, layer in zip(range(len(self.layers)-1, -1, -1), self.layers[::-1]):
             try:
                 if i == len(self.layers) - 1:
-                    da = outputs[-1] - y
+                    da = outputs[-1] - y.T
                     dz = layer.activation.grad(outputs[-1])
                     grad = da * dz
                 else:
@@ -77,7 +77,7 @@ class SequentialModel:
         inputs = x
         for layer in self.layers:
             inputs = layer(inputs)
-        return inputs
+        return inputs.T
     def evaluate(self, x, y, batch_size):
         batch_x, batch_y = batch_data(x, y, batch_size)
         loss = 0
@@ -117,6 +117,11 @@ def categorical_crossentropy(y_pred, y_true):
     return loss
 
 
+def mse(y_pred, y_true):
+    loss = np.sum(np.square(y_true - y_pred) / 2)
+    return loss
+
+
 class GradientDescent:
     def __init__(self, lr):
         self.lr = lr
@@ -141,6 +146,15 @@ class Adam:
             # TODO
 
 
+class Linear:
+    @staticmethod
+    def output(z):
+        return z
+    @staticmethod
+    def grad(a):
+        return 1
+
+
 class Sigmoid:
     @staticmethod
     def output(z):
@@ -149,11 +163,20 @@ class Sigmoid:
     def grad(a):
         return a * (1 - a)
 
+        
+class Tanh:
+    @staticmethod
+    def output(z):
+        return np.tanh(z)
+    @staticmethod
+    def grad(a):
+        return 1 - np.square(Tanh.output(a))
+
 
 class ReLU:
     @staticmethod
     def output(z):
-        return mp.maximum(z, 0)
+        return np.maximum(z, 0)
     @staticmethod
     def grad(a):
         dz = np.ones(a.shape)
@@ -186,7 +209,7 @@ class Softmax:
         # TODO
         # a_col = a.reshape(-1, 1)
         # jacobian = np.diagflat(a_col) - np.dot(a_col, a_col.T)
-        return np.ones(a.shape)
+        return 1
 
 
 class Input:
@@ -203,7 +226,7 @@ class Flatten:
         self.output_size = np.prod(input_size)
         self.name = 'Flatten'
     def __call__(self, x):
-        return x.reshape(-1, x.shape[0])
+        return x.reshape(x.shape[0], -1).T
 
 
 class Dense:
@@ -260,6 +283,7 @@ class Conv2D:
             padded[..., self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1], ...] = x
             x = padded
         y = np.zeros(x.shape, dtype=np.float32)
+
 
 class MaxPool2D:
     def __init__(self, ksize, name=None):

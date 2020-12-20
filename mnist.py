@@ -1,13 +1,14 @@
 import numpy as np
 import os
 import inefficientnet as ien
+import matplotlib.pyplot as plt
 
 
 def prepare_data(path, labels, img_size, channels=1):
     data = np.loadtxt(path, delimiter=',')
     # TODO: multidimensional data
     x = data[:, 1:].reshape((-1, ) + img_size) / 255
-    y_raw = data[:, :1].astype(np.int32)
+    y_raw = data[:, :1].astype(np.int32).reshape(-1)
     y = np.zeros((y_raw.size, labels))
     y[np.arange(y_raw.size), y_raw] = 1
     return x, y
@@ -38,10 +39,21 @@ def main():
 
     classifier.compile(ien.categorical_crossentropy, ien.GradientDescent(0.01))
     classifier.summary()
-    classifier.fit(train_x, train_y, 10, 64)
+    classifier.fit(train_x, train_y, 50, 64)
     # classifier.evaluate(test_x, test_y, 64)
 
     classifier.plot_loss()
+
+    idx = [1, 0, 16, 7, 3, 8, 21, 6, 10, 11]
+    y_pred = classifier.predict(train_x[idx])
+    plt.figure(2)
+    for i, j in zip(range(10), idx):
+        plt.subplot(2, 10, i+1)
+        plt.imshow(train_x[j])
+        plt.subplot(2, 10, 11+i)
+        plt.bar(range(10), y_pred[i])
+        plt.ylim([0, 1])
+    plt.show()
 
 
 if __name__ == '__main__':
