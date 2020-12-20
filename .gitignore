@@ -127,3 +127,5 @@ dmypy.json
 
 # Mnist dataset
 data/mnist/*.csv
+
+.vscode/*
