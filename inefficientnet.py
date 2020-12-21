@@ -266,7 +266,7 @@ class Conv2D:
             self.ksize = tuple(ksize)
         except TypeError:
             self.ksize = (ksize, ksize)
-        assert(ksize[0] % 2 and ksize[1] % 2)
+        assert(self.ksize[0] % 2 and self.ksize[1] % 2)
         self.stride = stride
         self.padding = padding
         self.activation = activation
@@ -274,15 +274,23 @@ class Conv2D:
     def compile(self, input_size):
         self.input_size = input_size
         assert(len(input_size) == 2)
-        if self.padding == 'same':
-            self.padsize = np.floor(np.array(ksize) / 2)
-        self.output_size = input_size if self.padding == 'same' else tuple(np.array(input_size) - 2*self.padsize)
+        self.kernels = np.random.standard_normal((self.ksize) + (self.n, ))
+        self.padsize = np.floor(np.divide(self.ksize, 2)).astype(np.int32)
+        self.output_size = input_size if self.padding == 'same' else tuple(np.subtract(input_size, 2*self.padsize))
     def __call__(self, x):
+        x = np.sum(x, axis=-1)
         if self.padding == 'same':
-            padded = np.zeros(np.array(input_size) + 2*self.padsize)
-            padded[..., self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1], ...] = x
+            padded = np.zeros((x.shape[0], ) + tuple(np.add(self.input_size, 2*self.padsize)))
+            padded[:, self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1]] = x
             x = padded
-        y = np.zeros(x.shape, dtype=np.float32)
+        y = np.zeros((x.shape[0], ) + self.output_size + (self.n, ), dtype=np.float32)
+        for k in range(self.n):
+            for i in range(0, self.output_size[0], self.stride):
+                for j in range(0, self.output_size[1], self.stride):
+                    area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]]
+                    res = np.multiply(area, self.kernels[:, :, k])
+                    y[:, i, j, k] = np.sum(res, axis=((1, 2)))
+        return y
 
 
 class MaxPool2D:
@@ -295,12 +303,12 @@ class MaxPool2D:
     def compile(self, input_size):
         self.input_size = input_size
         assert(len(input_size) == 2)
-        self.output_size = tuple(np.ceil(np.array(input_size) / self.ksize))
-        self.padding = input_size[0] % 2 or input_size[1] % 2
+        self.output_size = tuple(np.ceil(np.divide(input_size, self.ksize)).astype(np.int32))
+        self.padding = np.any(np.mod(input_size, 2).astype(np.bool))
     def __call__(self, x):
         if self.padding:
-            padded = np.full(x.shape[:1] + self.output_size + x.shape[3:], np.nan)
-            padded[..., :x.shape[1], :x.shape[2], ...] = x
+            padded = np.full(x.shape[:1] + tuple(np.multiply(self.output_size, self.ksize)) + x.shape[3:], np.nan)
+            padded[:, :self.input_size[0], :self.input_size[1], ...] = x
             x = padded
         shape = (x.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + x.shape[3:]
         return np.nanmax(x.reshape(shape), axis=(2, 4))
