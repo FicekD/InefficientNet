@@ -56,7 +56,7 @@ class SequentialModel:
     def backward(self, x, y, outputs):
         gradients = list()
         for i, layer in zip(range(len(self.layers)-1, -1, -1), self.layers[::-1]):
-            try:
+            if isinstance(layer, Dense):
                 if i == len(self.layers) - 1:
                     da = outputs[-1] - y.T
                     dz = layer.activation.grad(outputs[-1])
@@ -68,10 +68,17 @@ class SequentialModel:
                 dwl = outputs[i-1].T if i > 1 else x.reshape(x.shape[0], np.product(x.shape[1:]))
                 dw = np.dot(grad, dwl)
                 db = np.sum(grad, axis=1).reshape(-1, 1)
-                assert(dw.shape == layer.w.shape and db.shape == layer.b.shape)
-                gradients.append([dw, db])
-            except AttributeError:
+            elif isinstance(layer, Conv2D):
+                # TODO: almost there!
+                pass
+            elif isinstance(layer, MaxPool2D):
+                # TODO: this is not gonna be fun...
+                pass
+            else:
                 gradients.append(None)
+                continue
+            assert(dw.shape == layer.w.shape and db.shape == layer.b.shape)
+            gradients.append([dw, db])
         return gradients[::-1]
     def predict(self, x):
         inputs = x
@@ -241,7 +248,7 @@ class Dense:
     def compile(self, input_size):
         self.input_size = input_size
         self.w = np.random.randn(self.n, input_size) * np.sqrt(2 / (input_size))
-        self.b = np.random.randn(self.n, 1) * np.sqrt(2 / (input_size))
+        self.b = np.zeros((self.n, 1))
     def __call__(self, x):
         z = np.dot(self.w, x) + self.b
         a = self.activation.output(z)
@@ -274,9 +281,9 @@ class Conv2D:
     def compile(self, input_size):
         self.input_size = input_size
         assert(len(input_size) == 2)
-        self.kernels = np.random.standard_normal((np.product(self.ksize), self.n))
         self.padsize = np.floor(np.divide(self.ksize, 2)).astype(np.int32)
         self.output_size = input_size if self.padding == 'same' else tuple(np.subtract(input_size, 2*self.padsize))
+        self.kernels = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(2/np.product(self.output_size)/self.stride)
     def __call__(self, x):
         x = np.sum(x, axis=-1)
         if self.padding == 'same':
@@ -284,11 +291,10 @@ class Conv2D:
             padded[:, self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1]] = x
             x = padded
         y = np.zeros((x.shape[0], ) + self.output_size + (self.n, ), dtype=np.float32)
-        for k in range(self.n):
-            for i in range(0, self.output_size[0], self.stride):
-                for j in range(0, self.output_size[1], self.stride):
-                    area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]].reshape(x.shape[0], -1)
-                    y[:, i, j, k] = np.dot(area, self.kernels[:, k]).reshape(-1)
+        for i in range(0, self.output_size[0], self.stride):
+            for j in range(0, self.output_size[1], self.stride):
+                area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]].reshape(x.shape[0], -1)
+                y[:, i, j, :] = np.dot(area, self.kernels)
         return y
 
 
