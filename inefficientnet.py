@@ -274,7 +274,7 @@ class Conv2D:
     def compile(self, input_size):
         self.input_size = input_size
         assert(len(input_size) == 2)
-        self.kernels = np.random.standard_normal((self.ksize) + (self.n, ))
+        self.kernels = np.random.standard_normal((np.product(self.ksize), self.n))
         self.padsize = np.floor(np.divide(self.ksize, 2)).astype(np.int32)
         self.output_size = input_size if self.padding == 'same' else tuple(np.subtract(input_size, 2*self.padsize))
     def __call__(self, x):
@@ -287,9 +287,8 @@ class Conv2D:
         for k in range(self.n):
             for i in range(0, self.output_size[0], self.stride):
                 for j in range(0, self.output_size[1], self.stride):
-                    area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]]
-                    res = np.multiply(area, self.kernels[:, :, k])
-                    y[:, i, j, k] = np.sum(res, axis=((1, 2)))
+                    area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]].reshape(x.shape[0], -1)
+                    y[:, i, j, k] = np.dot(area, self.kernels[:, k]).reshape(-1)
         return y
 
 

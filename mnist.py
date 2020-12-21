@@ -6,8 +6,7 @@ import matplotlib.pyplot as plt
 
 def prepare_data(path, labels, img_size, channels=1):
     data = np.loadtxt(path, delimiter=',')
-    # TODO: multidimensional data
-    x = data[:, 1:].reshape((-1, ) + img_size + (, channels)) / 255
+    x = data[:, 1:].reshape((-1, ) + img_size + (channels, )) / 255
     y_raw = data[:, :1].astype(np.int32).reshape(-1)
     y = np.zeros((y_raw.size, labels))
     y[np.arange(y_raw.size), y_raw] = 1
@@ -49,7 +48,7 @@ def main():
     plt.figure(2)
     for i, j in zip(range(10), idx):
         plt.subplot(2, 10, i+1)
-        plt.imshow(train_x[j][:, :, 0])
+        plt.imshow(train_x[j].reshape(img_size))
         plt.subplot(2, 10, 11+i)
         plt.bar(range(10), y_pred[i])
         plt.ylim([0, 1])

@@ -57,14 +57,14 @@ class SingleLayerTests(unittest.TestCase):
         layer = inefficientnet.Conv2D(2, 3)
         layer.compile((5, 5))
         x = np.array(list(range(100))).reshape(2, 5, 5, 2)
-        layer.kernels[:, :, 0] = np.array(list(range(1, 10))).reshape(3, 3)
-        layer.kernels[:, :, 1] = np.array(list(range(-10, -1))).reshape(3, 3)
+        layer.kernels[:, 0] = np.array(list(range(1, 10)))
+        layer.kernels[:, 1] = np.array(list(range(-10, -1)))
         y = layer(x)
         x = np.sum(x, -1)
-        self.assertTrue(np.all(y[0, :, :, 0] == signal.correlate2d(x[0, :, :], layer.kernels[:, :, 0], 'same')))
-        self.assertTrue(np.all(y[0, :, :, 1] == signal.correlate2d(x[0, :, :], layer.kernels[:, :, 1], 'same')))
-        self.assertTrue(np.all(y[1, :, :, 0] == signal.correlate2d(x[1, :, :], layer.kernels[:, :, 0], 'same')))
-        self.assertTrue(np.all(y[1, :, :, 1] == signal.correlate2d(x[1, :, :], layer.kernels[:, :, 1], 'same')))
+        self.assertTrue(np.all(y[0, :, :, 0] == signal.correlate2d(x[0, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')))
+        self.assertTrue(np.all(y[0, :, :, 1] == signal.correlate2d(x[0, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')))
+        self.assertTrue(np.all(y[1, :, :, 0] == signal.correlate2d(x[1, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')))
+        self.assertTrue(np.all(y[1, :, :, 1] == signal.correlate2d(x[1, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')))
 
 
 if __name__ == '__main__':
