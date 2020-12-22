@@ -14,6 +14,6 @@ Goal is to get sequential convnets working, maybe something like Keras' function
 - Softmax activation
 - Adam optimizer
 - Convolutional layers stride other than 1
-- Backpropagation of Convolutional, Maxpool layers
+- Backpropagation of Convolutional, Maxpool, Dropout layers
 
 Currently testing on reduced MNIST to make sure everythong works together as intended. Unit testesting forward propagations.
