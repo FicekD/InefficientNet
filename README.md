@@ -4,8 +4,8 @@ Numpy deep learning implementation. Trying to achieve similar style to Keras.
 Goal is to get sequential convnets working, maybe something like Keras' functional API, maybe convolution implementation in C.
 
 ### What's working
-- Training loop - forward and backward propagation
-- Dense, Flatten and Dropout layers
+- Training loop - forward and backward propagation for fully connected layers
+- Dense, Flatten layers
 - Categorical crossentropy loss
 - ReLU, Leaky ReLU, Sigmoid activations
 - Gradient descent optimizer
