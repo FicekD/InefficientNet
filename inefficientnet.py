@@ -74,6 +74,9 @@ class SequentialModel:
             elif isinstance(layer, MaxPool2D):
                 # TODO: this is not gonna be fun...
                 pass
+            elif isinstance(layer, Dropout):
+                # TODO
+                pass
             else:
                 gradients.append(None)
                 continue
