@@ -56,9 +56,9 @@ class SingleLayerTests(unittest.TestCase):
     def test_conv2d_layer(self):
         layer = inefficientnet.Conv2D(2, 3)
         layer.compile((5, 5))
-        x = np.array(list(range(100))).reshape(2, 5, 5, 2)
-        layer.kernels[:, 0] = np.array(list(range(1, 10)))
-        layer.kernels[:, 1] = np.array(list(range(-10, -1)))
+        x = np.arange(100).reshape(2, 5, 5, 2)
+        layer.kernels[:, 0] = np.arange(1, 10)
+        layer.kernels[:, 1] = np.arange(-10, -1)
         y = layer(x)
         x = np.sum(x, -1)
         self.assertTrue(np.all(y[0, :, :, 0] == signal.correlate2d(x[0, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')), 'incorrect result')
