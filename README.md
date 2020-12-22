@@ -16,4 +16,4 @@ Goal is to get sequential convnets working, maybe something like Keras' function
 - Convolutional layers stride other than 1
 - Backpropagation of Convolutional, Maxpool layers
 
-Currently testing on MNIST. Unit testesting forward propagations.
+Currently testing on reduced MNIST to make sure everythong works together as intended. Unit testesting forward propagations.
