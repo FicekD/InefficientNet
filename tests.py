@@ -26,9 +26,9 @@ class SingleLayerTests(unittest.TestCase):
     def test_dropout_layer(self):
         layer = inefficientnet.Dropout(0)
         x = np.random.rand(32)
-        self.assertTrue(np.all(x == layer(x)))
+        self.assertTrue(np.all(x == layer(x)), 'expected all inputs to pass')
         layer = inefficientnet.Dropout(1)
-        self.assertTrue(np.all(layer(x) == 0))
+        self.assertTrue(np.all(layer(x) == 0), 'expected all zeros output')
 
     def test_maxpool2d_layer(self):
         layer = inefficientnet.MaxPool2D(2)
@@ -48,10 +48,10 @@ class SingleLayerTests(unittest.TestCase):
         x[0, 2, 2, 1] = 55
         # y = [1, 0; 0, 55]
         y = layer(x).astype(np.int32)
-        self.assertTrue(np.all(y[0, :, :, 0] == np.array([[43, 0, 0], [0, 22, 0]])))
-        self.assertTrue(np.all(y[1, :, :, 0] == np.array([[92, 0, 0], [0, 0, 0]])))
-        self.assertTrue(np.all(y[0, :, :, 1] == np.array([[1, 0, 0], [0, 55, 0]])))
-        self.assertTrue(np.all(y[1, :, :, 1] == np.array([[0, 0, 0], [0, 0, 0]])))
+        self.assertTrue(np.all(y[0, :, :, 0] == np.array([[43, 0, 0], [0, 22, 0]])), 'incorrect result')
+        self.assertTrue(np.all(y[1, :, :, 0] == np.array([[92, 0, 0], [0, 0, 0]])), 'incorrect result')
+        self.assertTrue(np.all(y[0, :, :, 1] == np.array([[1, 0, 0], [0, 55, 0]])), 'incorrect result')
+        self.assertTrue(np.all(y[1, :, :, 1] == np.array([[0, 0, 0], [0, 0, 0]])), 'incorrect result')
 
     def test_conv2d_layer(self):
         layer = inefficientnet.Conv2D(2, 3)
@@ -61,10 +61,10 @@ class SingleLayerTests(unittest.TestCase):
         layer.kernels[:, 1] = np.array(list(range(-10, -1)))
         y = layer(x)
         x = np.sum(x, -1)
-        self.assertTrue(np.all(y[0, :, :, 0] == signal.correlate2d(x[0, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')))
-        self.assertTrue(np.all(y[0, :, :, 1] == signal.correlate2d(x[0, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')))
-        self.assertTrue(np.all(y[1, :, :, 0] == signal.correlate2d(x[1, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')))
-        self.assertTrue(np.all(y[1, :, :, 1] == signal.correlate2d(x[1, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')))
+        self.assertTrue(np.all(y[0, :, :, 0] == signal.correlate2d(x[0, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')), 'incorrect result')
+        self.assertTrue(np.all(y[0, :, :, 1] == signal.correlate2d(x[0, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')), 'incorrect result')
+        self.assertTrue(np.all(y[1, :, :, 0] == signal.correlate2d(x[1, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')), 'incorrect result')
+        self.assertTrue(np.all(y[1, :, :, 1] == signal.correlate2d(x[1, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')), 'incorrect result')
 
 
 if __name__ == '__main__':
