@@ -128,7 +128,7 @@ def categorical_crossentropy(y_pred, y_true):
 
 
 def mse(y_pred, y_true):
-    loss = np.sum(np.square(y_true - y_pred) / 2)
+    loss = np.sum(np.square(y_true - y_pred)) / y_true.size
     return loss
 
 
