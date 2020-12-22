@@ -293,6 +293,7 @@ class Conv2D:
         y = np.zeros((x.shape[0], ) + self.output_size + (self.n, ), dtype=np.float32)
         for i in range(0, self.output_size[0], self.stride):
             for j in range(0, self.output_size[1], self.stride):
+                # cross-correlation instead of convolution
                 area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]].reshape(x.shape[0], -1)
                 y[:, i, j, :] = np.dot(area, self.kernels)
         return y
