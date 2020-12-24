@@ -285,7 +285,9 @@ class Conv2D:
         self.input_size = input_size
         assert(len(input_size) == 2)
         self.padsize = np.floor(np.divide(self.ksize, 2)).astype(np.int32)
-        self.output_size = input_size if self.padding == 'same' else tuple(np.subtract(input_size, 2*self.padsize))
+        strided_size = tuple(np.ceil(np.divide(self.input_size, self.stride)).astype(np.int32))
+        self.output_size = strided_size if self.padding == 'same' else tuple(np.subtract(strided_size, 2*self.padsize))
+        # TODO: correct inicialization
         self.kernels = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(2/np.product(self.output_size)/self.stride)
     def __call__(self, x):
         x = np.sum(x, axis=-1)
@@ -293,12 +295,12 @@ class Conv2D:
             padded = np.zeros((x.shape[0], ) + tuple(np.add(self.input_size, 2*self.padsize)))
             padded[:, self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1]] = x
             x = padded
-        y = np.zeros((x.shape[0], ) + self.output_size + (self.n, ), dtype=np.float32)
-        for i in range(0, self.output_size[0], self.stride):
-            for j in range(0, self.output_size[1], self.stride):
-                # cross-correlation instead of convolution
-                area = x[:, i:i+self.ksize[0], j:j+self.ksize[1]].reshape(x.shape[0], -1)
-                y[:, i, j, :] = np.dot(area, self.kernels)
+        y = np.zeros((x.shape[0], self.output_size[0], self.output_size[1], self.n), dtype=np.float32)
+        for i_out, i_in in enumerate(range(0, self.input_size[0], self.stride)):
+            for j_out, j_in in enumerate(range(0, self.input_size[1], self.stride)):
+                # doing cross-correlation instead of convolution
+                area = x[:, i_in:i_in+self.ksize[0], j_in:j_in+self.ksize[1]].reshape(x.shape[0], -1)
+                y[:, i_out, j_out, :] = np.dot(area, self.kernels)
         return y
 
 

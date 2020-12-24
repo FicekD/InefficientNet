@@ -53,18 +53,29 @@ class SingleLayerTests(unittest.TestCase):
         self.assertTrue(np.all(y[0, :, :, 1] == np.array([[1, 0, 0], [0, 55, 0]])), 'incorrect result')
         self.assertTrue(np.all(y[1, :, :, 1] == np.array([[0, 0, 0], [0, 0, 0]])), 'incorrect result')
 
-    def test_conv2d_layer(self):
+    def test_conv2d_layer_stride_1(self):
         layer = inefficientnet.Conv2D(2, 3)
         layer.compile((5, 5))
         x = np.arange(100).reshape(2, 5, 5, 2)
-        layer.kernels[:, 0] = np.arange(1, 10)
-        layer.kernels[:, 1] = np.arange(-10, -1)
+        layer.kernels[:, :] = np.arange(18).reshape(9, 2)
         y = layer(x)
         x = np.sum(x, -1)
-        self.assertTrue(np.all(y[0, :, :, 0] == signal.correlate2d(x[0, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')), 'incorrect result')
-        self.assertTrue(np.all(y[0, :, :, 1] == signal.correlate2d(x[0, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')), 'incorrect result')
-        self.assertTrue(np.all(y[1, :, :, 0] == signal.correlate2d(x[1, :, :], layer.kernels[:, 0].reshape(3, 3), 'same')), 'incorrect result')
-        self.assertTrue(np.all(y[1, :, :, 1] == signal.correlate2d(x[1, :, :], layer.kernels[:, 1].reshape(3, 3), 'same')), 'incorrect result')
+        y_true = np.zeros(x.shape + (2, ))
+        y_true[:, :, :, 0] = signal.correlate(x, layer.kernels[:, 0].reshape(1, 3, 3), 'same')
+        y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')
+        self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 1')
+
+    def test_conv2d_layer_stride_2(self):
+        layer = inefficientnet.Conv2D(2, 3, 2)
+        layer.compile((5, 5))
+        x = np.arange(100).reshape(2, 5, 5, 2)
+        layer.kernels[:, :] = np.arange(18).reshape(9, 2)
+        y = layer(x)
+        x = np.sum(x, -1)
+        y_true = np.zeros(x.shape[:1] + tuple(np.ceil(np.divide(x.shape[1:], 2)).astype(np.int32)) + (2, ))
+        y_true[:, :, :, 0] = signal.correlate(x, layer.kernels[:, 0].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 2')
 
 
 if __name__ == '__main__':
