@@ -77,6 +77,17 @@ class SingleLayerTests(unittest.TestCase):
         y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
         self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 2')
 
+        layer = inefficientnet.Conv2D(2, 3, 2)
+        layer.compile((6, 6))
+        x = np.arange(144).reshape(2, 6, 6, 2)
+        layer.kernels[:, :] = np.arange(18).reshape(9, 2)
+        y = layer(x)
+        x = np.sum(x, -1)
+        y_true = np.zeros(x.shape[:1] + tuple(np.ceil(np.divide(x.shape[1:], 2)).astype(np.int32)) + (2, ))
+        y_true[:, :, :, 0] = signal.correlate(x, layer.kernels[:, 0].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 2')
+
 
 if __name__ == '__main__':
     unittest.main()
