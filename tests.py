@@ -83,7 +83,7 @@ class SingleLayerTests(unittest.TestCase):
         layer.compile((6, 6))
         x = np.arange(144).reshape(2, 6, 6, 2)
         layer.w[:, :] = np.arange(18).reshape(9, 2)
-        layer.b = 0
+        layer.b = np.zeros_like(layer.b)
         y = layer(x)
         x = np.sum(x, -1)
         y_true = np.zeros(x.shape[:1] + tuple(np.ceil(np.divide(x.shape[1:], 2)).astype(np.int32)) + (2, ))

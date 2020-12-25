@@ -294,8 +294,7 @@ class Conv2D:
             for j_out, j_in in enumerate(range(0, self.input_size[1], self.stride)):
                 # doing cross-correlation instead of convolution
                 area = x[:, i_in:i_in+self.ksize[0], j_in:j_in+self.ksize[1]].reshape(x.shape[0], -1)
-                # TODO: bias
-                y[:, i_out, j_out, :] = np.dot(area, self.w)
+                y[:, i_out, j_out, :] = np.dot(area, self.w) + self.b
         return y
     def backward(self, gradient, inputs, outputs, optimizer):
         pass
