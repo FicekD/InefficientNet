@@ -61,6 +61,8 @@ class SequentialModel:
     def predict(self, x):
         inputs = x
         for layer in self.layers:
+            if isinstance(layer, Dropout):
+                continue
             inputs = layer(inputs)
         return inputs.T
     def evaluate(self, x, y, batch_size):
