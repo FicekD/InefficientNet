@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import inefficientnet
-from scipy import signal
+from scipy.signal import correlate
 
 
 class SingleLayerTests(unittest.TestCase):
@@ -15,7 +15,7 @@ class SingleLayerTests(unittest.TestCase):
         self.assertEqual(layer(four_dim_input).shape, (32*32*3, 16), 'incorrect output shape')
 
     def test_dense_layer(self):
-        layer = inefficientnet.Dense(16, inefficientnet.Linear)
+        layer = inefficientnet.Dense(16, inefficientnet.Linear())
         layer.compile(32)
         self.assertEqual(layer.w.shape, (16, 32), 'incorrect weights shape')
         self.assertEqual(layer.b.shape, (16, 1), 'incorrect bias shape')
@@ -57,35 +57,38 @@ class SingleLayerTests(unittest.TestCase):
         layer = inefficientnet.Conv2D(2, 3)
         layer.compile((5, 5))
         x = np.arange(100).reshape(2, 5, 5, 2)
-        layer.kernels[:, :] = np.arange(18).reshape(9, 2)
+        layer.w[:, :] = np.arange(18).reshape(9, 2)
+        layer.b = 0
         y = layer(x)
         x = np.sum(x, -1)
         y_true = np.zeros(x.shape + (2, ))
-        y_true[:, :, :, 0] = signal.correlate(x, layer.kernels[:, 0].reshape(1, 3, 3), 'same')
-        y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')
+        y_true[:, :, :, 0] = correlate(x, layer.w[:, 0].reshape(1, 3, 3), 'same')
+        y_true[:, :, :, 1] = correlate(x, layer.w[:, 1].reshape(1, 3, 3), 'same')
         self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 1')
 
     def test_conv2d_layer_stride_2(self):
         layer = inefficientnet.Conv2D(2, 3, 2)
         layer.compile((5, 5))
         x = np.arange(100).reshape(2, 5, 5, 2)
-        layer.kernels[:, :] = np.arange(18).reshape(9, 2)
+        layer.w[:, :] = np.arange(18).reshape(9, 2)
+        layer.b = 0
         y = layer(x)
         x = np.sum(x, -1)
         y_true = np.zeros(x.shape[:1] + tuple(np.ceil(np.divide(x.shape[1:], 2)).astype(np.int32)) + (2, ))
-        y_true[:, :, :, 0] = signal.correlate(x, layer.kernels[:, 0].reshape(1, 3, 3), 'same')[:, ::2, ::2]
-        y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        y_true[:, :, :, 0] = correlate(x, layer.w[:, 0].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        y_true[:, :, :, 1] = correlate(x, layer.w[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
         self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 2')
 
         layer = inefficientnet.Conv2D(2, 3, 2)
         layer.compile((6, 6))
         x = np.arange(144).reshape(2, 6, 6, 2)
-        layer.kernels[:, :] = np.arange(18).reshape(9, 2)
+        layer.w[:, :] = np.arange(18).reshape(9, 2)
+        layer.b = 0
         y = layer(x)
         x = np.sum(x, -1)
         y_true = np.zeros(x.shape[:1] + tuple(np.ceil(np.divide(x.shape[1:], 2)).astype(np.int32)) + (2, ))
-        y_true[:, :, :, 0] = signal.correlate(x, layer.kernels[:, 0].reshape(1, 3, 3), 'same')[:, ::2, ::2]
-        y_true[:, :, :, 1] = signal.correlate(x, layer.kernels[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        y_true[:, :, :, 0] = correlate(x, layer.w[:, 0].reshape(1, 3, 3), 'same')[:, ::2, ::2]
+        y_true[:, :, :, 1] = correlate(x, layer.w[:, 1].reshape(1, 3, 3), 'same')[:, ::2, ::2]
         self.assertTrue(np.all(y == y_true), 'incorrect result for stride == 2')
 
 

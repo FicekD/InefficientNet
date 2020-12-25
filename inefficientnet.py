@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
+from itertools import count
 
 
 def batch_data(x, y, batch_size):
@@ -37,8 +38,7 @@ class SequentialModel:
             for i, (x, y) in enumerate(zip(batch_train_x, batch_train_y)):
                 outputs = self.forward(x)
                 train_loss.append(self.loss(outputs[-1], y.T))
-                gradients = self.backward(x, y, outputs)
-                self.optimizer(self.layers, gradients)
+                self.backward(x, y, outputs)
             self.history['loss'].append(sum(train_loss))
             if val_x is not None and val_y is not None:
                 val_loss = list()
@@ -54,35 +54,10 @@ class SequentialModel:
             outputs.append(inputs)
         return outputs
     def backward(self, x, y, outputs):
-        gradients = list()
-        for i, layer in zip(range(len(self.layers)-1, -1, -1), self.layers[::-1]):
-            if isinstance(layer, Dense):
-                if i == len(self.layers) - 1:
-                    da = outputs[-1] - y.T
-                    dz = layer.activation.grad(outputs[-1])
-                    grad = da * dz
-                else:
-                    da = self.layers[i+1].w
-                    dz = layer.activation.grad(outputs[i])
-                    grad = np.dot(da.T, grad) * dz
-                dwl = outputs[i-1].T if i > 1 else x.reshape(x.shape[0], np.product(x.shape[1:]))
-                dw = np.dot(grad, dwl)
-                db = np.sum(grad, axis=1).reshape(-1, 1)
-            elif isinstance(layer, Conv2D):
-                # TODO: almost there!
-                pass
-            elif isinstance(layer, MaxPool2D):
-                # TODO: this is not gonna be fun...
-                gradients.append(None)
-            elif isinstance(layer, Dropout):
-                # TODO
-                gradients.append(None)
-            else:
-                gradients.append(None)
-                continue
-            assert(dw.shape == layer.w.shape and db.shape == layer.b.shape)
-            gradients.append([dw, db])
-        return gradients[::-1]
+        gradient = self.loss.grad(outputs[-1], y, self.layers[-1].activation)
+        for i, layer in zip(count(len(self.layers)-1, -1), self.layers[::-1]):
+            inputs = outputs[i-1].T if i != 0 else x
+            gradient = layer.backward(gradient, inputs, outputs[i], self.optimizer)
     def predict(self, x):
         inputs = x
         for layer in self.layers:
@@ -121,26 +96,30 @@ class SequentialModel:
 class Model:
     pass
 
+class CategoricalCrossentropy:
+    @staticmethod
+    def __call__(y_pred, y_true):
+        return -np.sum(y_true * np.log10(y_pred))
+    @staticmethod
+    def grad(y_pred, y_true, activation):
+        return y_pred - y_true.T
 
-def categorical_crossentropy(y_pred, y_true):
-    loss = -np.sum(y_true * np.log10(y_pred))
-    return loss
 
-
-def mse(y_pred, y_true):
-    loss = np.sum(np.square(y_true - y_pred)) / y_true.size
-    return loss
+class MSE:
+    @staticmethod
+    def __call__(y_pred, y_true):
+        return np.sum(np.square(y_true - y_pred)) / y_true.size
+    @staticmethod
+    def grad(y_pred, y_true, activation):
+        return 2 * (y_pred - y_true.T) / y_true.size
 
 
 class GradientDescent:
     def __init__(self, lr):
         self.lr = lr
-    def __call__(self, layers, gradients):
-        for layer, gradient in zip(layers, gradients):
-            if gradient is None:
-                continue
-            layer.w -= self.lr * gradient[0]
-            layer.b -= self.lr * gradient[1]
+    def __call__(self, dw, db, weights, bias):
+        weights -= self.lr * dw
+        bias -= self.lr * db
 
 
 class Adam:
@@ -149,16 +128,14 @@ class Adam:
         self.beta1 = beta1
         self.beta2 = beta2
         self.epsilon = epsilon
-    def __call__(self, layers, gradients):
-        for layer, gradient in zip(layers, gradients):
-            if gradient is None:
-                continue
-            # TODO
+    def __call__(self, dw, db, weights, bias):
+        pass
+        # TODO
 
 
 class Linear:
     @staticmethod
-    def output(z):
+    def __call__(z):
         return z
     @staticmethod
     def grad(a):
@@ -167,7 +144,7 @@ class Linear:
 
 class Sigmoid:
     @staticmethod
-    def output(z):
+    def __call__(z):
         return 1 / (1 + np.exp(-z))
     @staticmethod
     def grad(a):
@@ -176,28 +153,28 @@ class Sigmoid:
         
 class Tanh:
     @staticmethod
-    def output(z):
+    def __call__(z):
         return np.tanh(z)
     @staticmethod
     def grad(a):
-        return 1 - np.square(Tanh.output(a))
+        return 1 - np.square(Tanh()(a))
 
 
 class ReLU:
     @staticmethod
-    def output(z):
+    def __call__(z):
         return np.maximum(z, 0)
     @staticmethod
     def grad(a):
         dz = np.ones(a.shape)
-        dz[np.where(a <= 0)] = 0
+        dz[np.where(a < 0)] = 0
         return dz
 
 
 class LeakyReLU:
     def __init__(self, alpha):
         self.alpha = alpha
-    def output(self, z):
+    def __call__(self, z):
         a = z
         a[np.where(z < 0)] = self.alpha * a[np.where(z < 0)]
         return a
@@ -210,7 +187,7 @@ class LeakyReLU:
 
 class Softmax:
     @staticmethod
-    def output(z):
+    def __call__(z):
         z_e = np.exp(z - np.max(z))
         a = z_e / np.sum(z_e)
         return a
@@ -226,8 +203,12 @@ class Input:
     def __init__(self, input_size, name=None):
         self.input_size = self.output_size = input_size
         self.name = name if name is not None else 'Input'
+    def compile(self, input_size):
+        return
     def __call__(self, x):
         return x
+    def backward(self, gradient, inputs, outputs, optimizer):
+        return gradient
 
 
 class Flatten:
@@ -237,6 +218,8 @@ class Flatten:
         self.name = 'Flatten'
     def __call__(self, x):
         return x.reshape(x.shape[0], -1).T
+    def backward(self, gradient, inputs, outputs, optimizer):
+        return gradient
 
 
 class Dense:
@@ -254,8 +237,16 @@ class Dense:
         self.b = np.zeros((self.n, 1))
     def __call__(self, x):
         z = np.dot(self.w, x) + self.b
-        a = self.activation.output(z)
+        a = self.activation(z)
         return a
+    def backward(self, gradient, inputs, outputs, optimizer):
+        gradient *= self.activation.grad(outputs)
+        new_gradient = np.dot(self.w.T, gradient)
+        dw = np.dot(gradient, inputs.reshape(inputs.shape[0], -1))
+        db = np.sum(gradient, axis=1).reshape(-1, 1)
+        assert(dw.shape == self.w.shape and db.shape == self.b.shape)
+        optimizer(dw, db, self.w, self.b)
+        return new_gradient
 
 
 class Dropout:
@@ -267,6 +258,8 @@ class Dropout:
     def __call__(self, x):
         mask = np.random.random(x.shape) > self.p
         return mask * x
+    def backward(self, gradient, inputs, outputs, optimizer):
+        pass
 
 
 class Conv2D:
@@ -288,7 +281,8 @@ class Conv2D:
         strided_size = tuple(np.ceil(np.divide(self.input_size, self.stride)).astype(np.int32))
         self.output_size = strided_size if self.padding == 'same' else tuple(np.subtract(strided_size, 2*self.padsize))
         # TODO: correct inicialization
-        self.kernels = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(2/np.product(self.output_size)/self.stride)
+        self.w = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(2/np.product(self.output_size)/self.stride)
+        self.b = np.random.standard_normal((self.n, 1)) * np.sqrt(2/np.product(self.output_size)/self.stride)
     def __call__(self, x):
         x = np.sum(x, axis=-1)
         if self.padding == 'same':
@@ -300,8 +294,11 @@ class Conv2D:
             for j_out, j_in in enumerate(range(0, self.input_size[1], self.stride)):
                 # doing cross-correlation instead of convolution
                 area = x[:, i_in:i_in+self.ksize[0], j_in:j_in+self.ksize[1]].reshape(x.shape[0], -1)
-                y[:, i_out, j_out, :] = np.dot(area, self.kernels)
+                # TODO: bias
+                y[:, i_out, j_out, :] = np.dot(area, self.w)
         return y
+    def backward(self, gradient, inputs, outputs, optimizer):
+        pass
 
 
 class MaxPool2D:
@@ -323,6 +320,8 @@ class MaxPool2D:
             x = padded
         shape = (x.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + x.shape[3:]
         return np.nanmax(x.reshape(shape), axis=(2, 4))
+    def backward(self, gradient, inputs, outputs, optimizer):
+        pass
 
 
 class Add:
@@ -331,6 +330,8 @@ class Add:
         self.name = 'Add'
     def __call__(self, x):
         return sum(x)
+    def backward(self, gradient, inputs, outputs, optimizer):
+        pass
 
 
 class Concatenate:
@@ -341,3 +342,5 @@ class Concatenate:
         self.input_size = self.output_size = input_size
     def __call__(self, x):
         return np.concatenate(x, axis=self.axis)
+    def backward(self, gradient, inputs, outputs, optimizer):
+        pass

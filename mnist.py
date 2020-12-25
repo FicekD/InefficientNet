@@ -33,10 +33,10 @@ def main():
         ien.Dense(256, ien.LeakyReLU(0.01)),
         ien.Dense(128, ien.LeakyReLU(0.01)),
         ien.Dense(64, ien.LeakyReLU(0.01)),
-        ien.Dense(labels, ien.Sigmoid)
+        ien.Dense(labels, ien.Sigmoid())
     ])
 
-    classifier.compile(ien.categorical_crossentropy, ien.GradientDescent(0.01))
+    classifier.compile(ien.CategoricalCrossentropy(), ien.GradientDescent(0.01))
     classifier.summary()
     classifier.fit(train_x, train_y, 50, 64)
     # classifier.evaluate(test_x, test_y, 64)
