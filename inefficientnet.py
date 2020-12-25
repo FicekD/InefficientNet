@@ -256,7 +256,7 @@ class Dropout:
     def compile(self, input_size):
         self.input_size = self.output_size = input_size
     def __call__(self, x):
-        mask = np.random.random(x.shape) > self.p
+        mask = (np.random.random(x.shape) > self.p) / (1 - self.p)
         return mask * x
     def backward(self, gradient, inputs, outputs, optimizer):
         pass
