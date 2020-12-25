@@ -14,4 +14,4 @@ Goal is to get sequential convnets working, maybe something like Keras' function
 - Adam optimizer
 - Backpropagation of Convolutional, Maxpool and Dropout layers
 
-Currently testing on reduced MNIST to make sure everythong works together as intended. Unit testesting forward propagations.
+Currently testing on reduced MNIST to make sure everything works together as intended. Unit testesting forward propagations.
