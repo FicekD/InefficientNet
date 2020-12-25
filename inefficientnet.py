@@ -261,7 +261,7 @@ class Dropout:
         mask = (np.random.random(x.shape) > self.p) / (1 - self.p)
         return mask * x
     def backward(self, gradient, inputs, outputs, optimizer):
-        mask = (output > 0) / (1 - self.p)
+        mask = (outputs > 0) / (1 - self.p)
         return gradient * mask
 
 
