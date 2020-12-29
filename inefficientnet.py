@@ -113,7 +113,7 @@ class MSE:
         return np.sum(np.square(y_true - y_pred)) / y_true.size
     @staticmethod
     def grad(y_pred, y_true, activation):
-        return 2 * (y_pred - y_true.T) / y_true.size
+        return (2 * (y_pred - y_true.T) / y_true.size) * activation.grad(y_pred)
 
 
 class GradientDescent:
@@ -159,7 +159,7 @@ class Tanh:
         return np.tanh(z)
     @staticmethod
     def grad(a):
-        return 1 - np.square(Tanh()(a))
+        return 1 - np.square(np.tanh(a))
 
 
 class ReLU:
@@ -190,15 +190,11 @@ class LeakyReLU:
 class Softmax:
     @staticmethod
     def __call__(z):
-        z_e = np.exp(z - np.max(z))
-        a = z_e / np.sum(z_e)
-        return a
+        ze = np.exp(z)
+        return ze / np.sum(ze, axis=0)
     @staticmethod
     def grad(a):
-        # TODO
-        # a_col = a.reshape(-1, 1)
-        # jacobian = np.diagflat(a_col) - np.dot(a_col, a_col.T)
-        return 1
+        return a*(1-a)
 
 
 class Input:
@@ -283,9 +279,8 @@ class Conv2D:
         self.padsize = np.floor(np.divide(self.ksize, 2)).astype(np.int32)
         strided_size = tuple(np.ceil(np.divide(self.input_size, self.stride)).astype(np.int32))
         self.output_size = strided_size if self.padding == 'same' else tuple(np.subtract(strided_size, 2*self.padsize))
-        # TODO: correct inicialization
-        self.w = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(2/np.product(self.output_size)/self.stride)
-        self.b = np.random.standard_normal((self.n, 1)) * np.sqrt(2/np.product(self.output_size)/self.stride)
+        self.w = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(np.prod(strided_size))
+        self.b = np.random.standard_normal((self.n, 1)) * np.sqrt(np.prod(strided_size))
     def __call__(self, x):
         x = np.sum(x, axis=-1)
         if self.padding == 'same':
@@ -323,6 +318,11 @@ class MaxPool2D:
         shape = (x.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + x.shape[3:]
         return np.nanmax(x.reshape(shape), axis=(2, 4))
     def backward(self, gradient, inputs, outputs, optimizer):
+        # shape = (inputs.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + inputs.shape[3:]
+        # grid = np.zeros(shape)
+        # grid[:, :, :, :, :, ...] = outputs.reshape((outputs.shape[0], self.output_size[0], 1, self.output_size[1], 1) + outptus.shape[3:])
+        # mask = (grid == inputs.reshape(shape))
+        # relevant_inputs = inputs * mask.reshape(inputs.shape)
         pass
 
 

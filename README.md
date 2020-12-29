@@ -6,11 +6,10 @@ Goal is to get sequential convnets working, maybe something like Keras' function
 ### What's working
 - Training loop - forward and backward propagation for fully connected layers
 - Categorical crossentropy and MSE loss
-- ReLU, Leaky ReLU, Tanh and Sigmoid activations
+- ReLU, Leaky ReLU, Tanh, Sigmoid and Softmax activations
 - Gradient descent optimizer
 
 ### What's not working
-- Softmax activation
 - Adam optimizer
 - Backpropagation of Convolutional, Maxpool and Dropout layers
 

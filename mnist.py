@@ -29,11 +29,15 @@ def main():
     classifier = ien.SequentialModel()
     classifier.add([
         ien.Input(img_size),
+        # ien.Conv2D(32, 3),
+        # ien.MaxPool2D(2),
+        # ien.Conv2D(64, 3)
+        # ien.MaxPool2D(2),
         ien.Flatten(),
         ien.Dense(256, ien.LeakyReLU(0.01)),
         ien.Dense(128, ien.LeakyReLU(0.01)),
         ien.Dense(64, ien.LeakyReLU(0.01)),
-        ien.Dense(labels, ien.Sigmoid())
+        ien.Dense(labels, ien.Softmax())
     ])
 
     classifier.compile(ien.CategoricalCrossentropy(), ien.GradientDescent(0.01))
