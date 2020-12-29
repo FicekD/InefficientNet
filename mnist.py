@@ -40,7 +40,7 @@ def main():
         ien.Dense(labels, ien.Softmax())
     ])
 
-    classifier.compile(ien.CategoricalCrossentropy(), ien.GradientDescent(0.01))
+    classifier.compile(ien.CategoricalCrossentropy(), ien.Adam(0.001))
     classifier.summary()
     classifier.fit(train_x, train_y, 50, 64)
     # classifier.evaluate(test_x, test_y, 64)

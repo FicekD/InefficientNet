@@ -34,6 +34,7 @@ class SequentialModel:
             batch_val_x, batch_val_y = batch_data(val_x, val_y, batch_size)
         for epoch in range(epochs):
             print(f'Epoch {epoch+1}/{epochs}')
+            self.optimizer.i = epoch+1
             train_loss = list()
             for i, (x, y) in enumerate(zip(batch_train_x, batch_train_y)):
                 outputs = self.forward(x)
@@ -98,6 +99,7 @@ class SequentialModel:
 class Model:
     pass
 
+
 class CategoricalCrossentropy:
     @staticmethod
     def __call__(y_pred, y_true):
@@ -119,9 +121,10 @@ class MSE:
 class GradientDescent:
     def __init__(self, lr):
         self.lr = lr
-    def __call__(self, dw, db, weights, bias):
-        weights -= self.lr * dw
-        bias -= self.lr * db
+        self.i = 0
+    def __call__(self, dw, db, layer):
+        layer.w -= self.lr * dw
+        layer.b -= self.lr * db
 
 
 class Adam:
@@ -130,9 +133,18 @@ class Adam:
         self.beta1 = beta1
         self.beta2 = beta2
         self.epsilon = epsilon
-    def __call__(self, dw, db, weights, bias):
-        pass
-        # TODO
+        self.i = 0
+    def __call__(self, dw, db, layer):
+        layer.m1_dw = self.beta1 * layer.m1_dw + (1 - self.beta1) * dw
+        layer.m1_db = self.beta1 * layer.m1_db + (1 - self.beta1) * db
+        layer.m2_dw = self.beta2 * layer.m2_dw + (1 - self.beta2) * np.square(dw)
+        layer.m2_db = self.beta2 * layer.m2_db + (1 - self.beta2) * np.square(db)
+        m1_dw_corr = layer.m1_dw / (1 - self.beta1 ** self.i)
+        m1_db_corr = layer.m1_db / (1 - self.beta1 ** self.i)
+        m2_dw_corr = layer.m2_dw / (1 - self.beta2 ** self.i)
+        m2_db_corr = layer.m2_db / (1 - self.beta2 ** self.i)
+        layer.w -= self.lr * m1_dw_corr / (np.sqrt(m2_dw_corr) + self.epsilon)
+        layer.b -= self.lr * m1_db_corr / (np.sqrt(m2_db_corr) + self.epsilon)
 
 
 class Linear:
@@ -231,8 +243,10 @@ class Dense:
         self.b = None
     def compile(self, input_size):
         self.input_size = input_size
-        self.w = np.random.randn(self.n, input_size) * np.sqrt(2 / (input_size))
+        self.w = np.random.standard_normal((self.n, input_size)) * np.sqrt(2 / input_size)
         self.b = np.zeros((self.n, 1))
+        self.m1_dw, self.m1_db = np.zeros_like(self.w), np.zeros_like(self.b)
+        self.m2_dw, self.m2_db = np.zeros_like(self.w), np.zeros_like(self.b)
     def __call__(self, x):
         z = np.dot(self.w, x) + self.b
         a = self.activation(z)
@@ -242,8 +256,7 @@ class Dense:
         new_gradient = np.dot(self.w.T, gradient)
         dw = np.dot(gradient, inputs.reshape(inputs.shape[0], -1))
         db = np.sum(gradient, axis=1).reshape(-1, 1)
-        assert(dw.shape == self.w.shape and db.shape == self.b.shape)
-        optimizer(dw, db, self.w, self.b)
+        optimizer(dw, db, self)
         return new_gradient
 
 
@@ -280,7 +293,9 @@ class Conv2D:
         strided_size = tuple(np.ceil(np.divide(self.input_size, self.stride)).astype(np.int32))
         self.output_size = strided_size if self.padding == 'same' else tuple(np.subtract(strided_size, 2*self.padsize))
         self.w = np.random.standard_normal((np.product(self.ksize), self.n)) * np.sqrt(np.prod(strided_size))
-        self.b = np.random.standard_normal((self.n, 1)) * np.sqrt(np.prod(strided_size))
+        self.b = np.zeros((self.n, 1))
+        self.m1_dw, self.m1_db = np.zeros_like(self.w), np.zeros_like(self.b)
+        self.m2_dw, self.m2_db = np.zeros_like(self.w), np.zeros_like(self.b)
     def __call__(self, x):
         x = np.sum(x, axis=-1)
         if self.padding == 'same':
