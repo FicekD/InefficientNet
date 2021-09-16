@@ -36,7 +36,7 @@ class SequentialModel:
             print(f'Epoch {epoch+1}/{epochs}')
             self.optimizer.i = epoch+1
             train_loss = list()
-            for i, (x, y) in enumerate(zip(batch_train_x, batch_train_y)):
+            for x, y in zip(batch_train_x, batch_train_y):
                 outputs = self.forward(x)
                 train_loss.append(self.loss(outputs[-1], y.T))
                 self.backward(x, y, outputs)
