@@ -310,7 +310,21 @@ class Conv2D:
                 y[:, i_out, j_out, :] = np.dot(area, self.w) + self.b
         return y
     def backward(self, gradient, inputs, outputs, optimizer):
-        pass
+        gradient *= self.activation.grad(outputs)
+        new_gradient = np.zeros(inputs.shape)
+        dw = np.zeros(self.w.shape)
+        db = np.zeros(self.b.shape)
+        if self.padding == 'same':
+            padded = np.zeros((inputs.shape[0], ) + tuple(np.add(self.input_size, 2*self.padsize)))
+            padded[:, self.padsize[0]:self.input_size[0]+self.padsize[0], self.padsize[1]:self.input_size[1]+self.padsize[1]] = inputs
+            inputs = padded
+        for i_grad, i_in in enumerate(range(0, self.input_size[0], self.stride)):
+            for j_grad, j_in in enumerate(range(0, self.input_size[1], self.stride)):
+                new_gradient[i_in:i_in+self.ksize[0], j_in:j_in+self.ksize[1]] += np.sum(self.w.reshape(self.ksize + (-1, )) * gradient[i_grad, j_grad], axis=0)
+                dw += inputs[i_in:i_in+self.ksize[0], j_in:j_in+self.ksize[1]] * gradient[i_grad, j_grad]
+                db += gradient[i_grad, j_grad]
+        optimizer(dw, db, self)
+        return new_gradient
 
 
 class MaxPool2D:
@@ -333,12 +347,16 @@ class MaxPool2D:
         shape = (x.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + x.shape[3:]
         return np.nanmax(x.reshape(shape), axis=(2, 4))
     def backward(self, gradient, inputs, outputs, optimizer):
-        # shape = (inputs.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + inputs.shape[3:]
-        # grid = np.zeros(shape)
-        # grid[:, :, :, :, :, ...] = outputs.reshape((outputs.shape[0], self.output_size[0], 1, self.output_size[1], 1) + outptus.shape[3:])
-        # mask = (grid == inputs.reshape(shape))
-        # relevant_inputs = inputs * mask.reshape(inputs.shape)
-        pass
+        if self.padding:
+            padded = np.full(x.shape[:1] + tuple(np.multiply(self.output_size, self.ksize)) + x.shape[3:], np.nan)
+            padded[:, :self.input_size[0], :self.input_size[1], ...] = inputs
+            inputs = padded
+        shape = (inputs.shape[0], self.output_size[0], self.ksize[0], self.output_size[1], self.ksize[1]) + inputs.shape[3:]
+        grid = np.zeros(shape)
+        grid[:, :, :, :, :, ...] = outputs.reshape((outputs.shape[0], self.output_size[0], 1, self.output_size[1], 1) + outptus.shape[3:])
+        mask = (grid == inputs.reshape(shape)).reshape(inputs.shape)
+        new_gradient = np.zeros(self.input_size)
+        new_gradient[mask] = gradient
 
 
 class Add:
